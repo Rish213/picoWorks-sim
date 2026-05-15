@@ -1,47 +1,92 @@
 import time
+import config
+
 
 class LinkEstimator:
     def __init__(self, window_size=5):
         self.window_size = window_size
+
+        # Logs
         self.sent_log = []
         self.recv_log = []
         self.latency_log = []
 
-    def log_sent(self):
-        self.sent_log.append(time.time())
-
-    def log_received(self, latency):
+    def log_sent(self, packet):
         now = time.time()
-        self.recv_log.append(now)
-        self.latency_log.append((now, latency))
+
+        self.sent_log.append({
+            "time": now,
+            "size": packet["size"]
+        })
+
+    def log_received(self, packet, latency):
+
+        self.recv_log.append({
+            "time": time.time(),
+            "size": packet["size"]
+        })
+
+        self.latency_log.append({
+            "time": time.time(),
+            "latency": latency
+        })
 
     def compute(self):
         now = time.time()
 
         # Sliding window filtering
-        self.sent_log = [t for t in self.sent_log if now - t <= self.window_size]
-        self.recv_log = [t for t in self.recv_log if now - t <= self.window_size]
-        self.latency_log = [(t, l) for (t, l) in self.latency_log if now - t <= self.window_size]
+        self.sent_log = [
+            p for p in self.sent_log
+            if now - p["time"] <= self.window_size
+        ]
 
-        sent = len(self.sent_log)
-        received = len(self.recv_log)
+        self.recv_log = [
+            p for p in self.recv_log
+            if now - p["time"] <= self.window_size
+        ]
 
-        if sent < 5:
+        self.latency_log = [
+            p for p in self.latency_log
+            if now - p["time"] <= self.window_size
+        ]
+
+        # Byte accounting
+        sent_bytes = 0
+        recv_bytes = 0
+
+        for p in self.sent_log:
+            sent_bytes += p["size"]
+
+        for p in self.recv_log:
+            recv_bytes += p["size"]
+
+        # Average latency
+        avg_latency = 0
+
+        if len(self.latency_log) > 0:
+            total_latency = 0
+
+            for p in self.latency_log:
+                total_latency += p["latency"]
+
+            avg_latency = total_latency / len(self.latency_log)
+
+        # Prevent divide-by-zero
+        if sent_bytes == 0:
             return {
                 "loss": 0,
                 "throughput": 0,
-                "latency": 0,
+                "latency": avg_latency,
                 "valid": False
             }
 
-        loss = 1 - (received / sent)
-        throughput = received / self.window_size
+        # Proper bounded loss
+        loss = 1 - (recv_bytes / sent_bytes)
 
-        # Average latency
-        if self.latency_log:
-            avg_latency = sum(l for (_, l) in self.latency_log) / len(self.latency_log)
-        else:
-            avg_latency = 0
+        loss = max(0, min(1, loss))
+
+        # Throughput in bytes/sec
+        throughput = recv_bytes / self.window_size
 
         return {
             "loss": loss,

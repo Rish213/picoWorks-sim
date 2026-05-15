@@ -22,12 +22,14 @@ class ModeController:
             # 🟢 Upgrade logic with delay
             if now - self.last_mode_change > self.upgrade_hold_time:
 
-                if throughput > 9:
+                if throughput > 200000:
                     self.mode = "RAW"
-                elif throughput > 5:
+                elif throughput > 50000:
                     self.mode = "VISUAL"
-                elif throughput > 2:
+                elif throughput > 500:
                     self.mode = "INFER"
+                else:
+                    self.mode = "SAFE"
 
         if self.mode != prev_mode:
             print(f"[MODE CHANGE] {prev_mode} → {self.mode}")

@@ -1,4 +1,5 @@
 import time
+import config
 
 class Node:
     def __init__(self, name):
@@ -11,52 +12,75 @@ class Node:
     def send(self, link, receiver, mode):
         now = time.time()
 
-        # Initialize timers if not present
+        # Initialize timers
         if not hasattr(self, "last_p0"):
             self.last_p0 = 0
             self.last_p1 = 0
             self.last_p2 = 0
 
-        # --- P0: ALWAYS send (critical loop) ---
-        if now - self.last_p0 >= 0.1:   # 10 Hz
+        # --- P0: ALWAYS (10 Hz) ---
+        if now - self.last_p0 >= 0.1:
             packet = {
                 "timestamp": now,
-                "type": "P0"
+                "type": "P0",
+                "size": config.PACKET_SIZES["P0"]
             }
             link.transmit(packet, receiver)
+
+            if hasattr(self, "estimator"):
+                self.estimator.log_sent(packet)
+
             self.sent_packets += 1
             self.last_p0 = now
 
-        # --- P1: metadata ---
-        if mode in ["RAW", "VISUAL", "INFER"]:
-            if now - self.last_p1 >= 0.3:   # ~3 Hz
-                packet = {
-                    "timestamp": now,
-                    "type": "P1"
-                }
-                link.transmit(packet, receiver)
-                self.sent_packets += 1
-                self.last_p1 = now
+        # --- P1: ALWAYS (low rate, fallback awareness) ---
+        if now - self.last_p1 >= 0.5:   # 2 Hz
+            packet = {
+                "timestamp": now,
+                "type": "P1",
+                "size": config.PACKET_SIZES["P1"]
+            }
+            link.transmit(packet, receiver)
 
-        # --- P2: keyframes ---
-        if mode in ["RAW", "VISUAL"]:
-            if now - self.last_p2 >= 1.0:   # ~1 Hz
+            if hasattr(self, "estimator"):
+                self.estimator.log_sent(packet)
+
+            self.sent_packets += 1
+            self.last_p1 = now
+
+        # --- Mode-dependent layers ---
+
+        # P2: keyframes (only VISUAL + RAW)
+        if mode in ["VISUAL", "RAW"]:
+            if now - self.last_p2 >= 1.0:
+
                 packet = {
                     "timestamp": now,
-                    "type": "P2"
+                    "type": "P2",
+                    "size": config.PACKET_SIZES["P2"]
                 }
+
                 link.transmit(packet, receiver)
+
+                if hasattr(self, "estimator"):
+                    self.estimator.log_sent(packet)
+
                 self.sent_packets += 1
                 self.last_p2 = now
 
-        # --- P3: video stream ---
+        # P3: video stream (RAW only)
         if mode == "RAW":
-            # continuous stream (high load)
             packet = {
                 "timestamp": now,
-                "type": "P3"
+                "type": "P3",
+                "size": config.PACKET_SIZES["P3"]
             }
+
             link.transmit(packet, receiver)
+
+            if hasattr(self, "estimator"):
+                self.estimator.log_sent(packet)
+
             self.sent_packets += 1
 
     def receive(self, packet, latency):
@@ -64,7 +88,7 @@ class Node:
         self.received_timestamps.append(time.time())
 
         if hasattr(self, "estimator"):
-            self.estimator.log_received(latency)   # ← IMPORTANT CHANGE
+            self.estimator.log_received(packet, latency)   
 
         now = time.time()
         actual_latency = now - packet["timestamp"]

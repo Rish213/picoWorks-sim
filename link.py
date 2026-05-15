@@ -4,12 +4,12 @@ import threading
 from collections import deque
 
 class Link:
-    def __init__(self, loss_rate, min_latency, max_latency, bandwidth_pps=10, buffer_size=50):
+    def __init__(self, loss_rate, min_latency, max_latency, bandwidth_bps, buffer_size=50):
         self.loss_rate = loss_rate
         self.min_latency = min_latency
         self.max_latency = max_latency
 
-        self.bandwidth_pps = bandwidth_pps  # packets per second
+        self.bandwidth_bps = bandwidth_bps # packets per second
         self.buffer_size = buffer_size
 
         self.queues = {
@@ -44,13 +44,10 @@ class Link:
             self.queues[priority].append((packet, receiver))
 
     def process_queue(self):
-        interval = 1 / self.bandwidth_pps
-
         while True:
-            time.sleep(interval)
 
             with self.lock:
-                # Check if all queues are empty
+
                 if not any(self.queues.values()):
                     continue
 
@@ -63,14 +60,23 @@ class Link:
                         packet, receiver = self.queues[p].popleft()
                         break
 
-            # Packet loss
+            # Simulate packet loss
             if random.random() < self.loss_rate:
                 continue
 
-            latency = random.uniform(self.min_latency, self.max_latency)
+            # Transmission delay (bytes / bandwidth)
+            transmission_delay = packet["size"] / self.bandwidth_bps
+
+            # RF / network latency
+            propagation_delay = random.uniform(
+                self.min_latency,
+                self.max_latency
+            )
+
+            total_delay = transmission_delay + propagation_delay
 
             def deliver():
-                time.sleep(latency)
-                receiver.receive(packet, latency)
+                time.sleep(total_delay)
+                receiver.receive(packet, total_delay)
 
             threading.Thread(target=deliver).start()

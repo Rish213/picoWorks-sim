@@ -14,13 +14,14 @@ def run_simulation():
         config.PACKET_LOSS_RATE,
         config.MIN_LATENCY,
         config.MAX_LATENCY,
-        bandwidth_pps=5,     
+        bandwidth_bps=config.LINK_BANDWIDTH,     
         buffer_size=30        
     )
 
     estimator = LinkEstimator()
     controller = ModeController()
 
+    node_a.estimator = estimator
     node_b.estimator = estimator
 
     start_time = time.time()
@@ -41,13 +42,12 @@ def run_simulation():
             mode = controller.mode  # hold previous mode
 
         node_a.send(link, node_b, mode)
-        estimator.log_sent()
 
-        send_interval = config.MODE_SEND_INTERVAL[mode]
-        time.sleep(send_interval)
+        #send_interval = config.MODE_SEND_INTERVAL[mode]
+        time.sleep(0.05)
 
         if time.time() - last_print >= 1:
-            print(f"[ESTIMATOR] Loss: {stats['loss']:.2f} | Throughput: {stats['throughput']:.2f} pkt/s | Latency: {stats['latency']:.2f}s")            
+            print(f"[ESTIMATOR] Loss: {stats['loss']:.2f} | Throughput: {stats['throughput']:.2f} B/s | Latency: {stats['latency']:.2f}s")            
             print(f"[CURRENT MODE] {mode}\n")
             last_print = time.time()
 
