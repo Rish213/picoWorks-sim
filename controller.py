@@ -10,7 +10,7 @@ class ModeController:
         now = time.time()
         prev_mode = self.mode
 
-        # 🔴 Immediate downgrade (safety first)
+        #Immediate downgrade (safety first)
         if latency > 1.0:
             self.mode = "SAFE"
         elif latency > 0.6:
@@ -19,7 +19,7 @@ class ModeController:
             self.mode = "SAFE"
 
         else:
-            # 🟢 Upgrade logic with delay
+            #Upgrade logic with delay
             if now - self.last_mode_change > self.upgrade_hold_time:
 
                 if throughput > 200000:

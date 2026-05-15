@@ -43,8 +43,7 @@ def run_simulation():
 
         node_a.send(link, node_b, mode)
 
-        #send_interval = config.MODE_SEND_INTERVAL[mode]
-        time.sleep(0.05)
+        time.sleep(0.02)
 
         if time.time() - last_print >= 1:
             print(f"[ESTIMATOR] Loss: {stats['loss']:.2f} | Throughput: {stats['throughput']:.2f} B/s | Latency: {stats['latency']:.2f}s")            

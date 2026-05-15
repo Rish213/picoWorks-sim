@@ -5,12 +5,6 @@ SIMULATION_TIME = 15        # seconds
 SEND_INTERVAL = 0.1        # seconds
 LINK_BANDWIDTH = 2_000_000   # bytes/sec (2 MB/s)
 
-MODE_SEND_INTERVAL = {
-    "RAW": 0.1,
-    "VISUAL": 0.1,
-    "INFER": 0.3,
-    "SAFE": 0.7
-}
 
 PACKET_SIZES = {
     "P0": 100,        # telemetry / commands

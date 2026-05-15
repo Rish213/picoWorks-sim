@@ -17,6 +17,7 @@ class Node:
             self.last_p0 = 0
             self.last_p1 = 0
             self.last_p2 = 0
+            self.last_p3 = 0
 
         # --- P0: ALWAYS (10 Hz) ---
         if now - self.last_p0 >= 0.1:
@@ -70,18 +71,23 @@ class Node:
 
         # P3: video stream (RAW only)
         if mode == "RAW":
-            packet = {
-                "timestamp": now,
-                "type": "P3",
-                "size": config.PACKET_SIZES["P3"]
-            }
 
-            link.transmit(packet, receiver)
+            # ~10 FPS equivalent
+            if now - self.last_p3 >= 0.1:
 
-            if hasattr(self, "estimator"):
-                self.estimator.log_sent(packet)
+                packet = {
+                    "timestamp": now,
+                    "type": "P3",
+                    "size": config.PACKET_SIZES["P3"]
+                }
 
-            self.sent_packets += 1
+                link.transmit(packet, receiver)
+
+                if hasattr(self, "estimator"):
+                    self.estimator.log_sent(packet)
+
+                self.sent_packets += 1
+                self.last_p3 = now
 
     def receive(self, packet, latency):
         self.received_packets += 1
@@ -94,45 +100,3 @@ class Node:
         actual_latency = now - packet["timestamp"]
 
         print(f"[{self.name}] {packet['type']} | Latency: {actual_latency:.3f}s")
-
-    def get_packet_type(self, mode):
-        import random
-
-        if mode == "RAW":
-            # heavy video
-            r = random.random()
-            if r < 0.05:
-                return "P0"
-            elif r < 0.15:
-                return "P1"
-            elif r < 0.35:
-                return "P2"
-            else:
-                return "P3"
-
-        elif mode == "VISUAL":
-            r = random.random()
-            if r < 0.1:
-                return "P0"
-            elif r < 0.3:
-                return "P1"
-            elif r < 0.6:
-                return "P2"
-            else:
-                return "P3"
-
-        elif mode == "INFER":
-            r = random.random()
-            if r < 0.2:
-                return "P0"
-            elif r < 0.5:
-                return "P1"
-            else:
-                return "P2"
-
-        elif mode == "SAFE":
-            r = random.random()
-            if r < 0.6:
-                return "P0"
-            else:
-                return "P1"
